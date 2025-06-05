@@ -47,7 +47,9 @@ class Player3:
             fill_id = self.canvas.create_arc(
                 x - preview_radius, y - preview_radius,
                 x + preview_radius, y + preview_radius,
-                start=90, extent=0, fill="gray", outline=""
+                start=90, extent=0,
+                fill="gray", outline="",
+                style="pieslice"  # ← 이거 꼭 필요함!
             )
 
             # 3. 애니메이션
@@ -75,11 +77,16 @@ class Player3:
                     self.last_placed_time = int(time.time() * 1000)
                     return
 
-                # 확장 각도 업데이트
+                    # 1. extent 증가
                 angle = 360 * (progress / steps)
                 self.canvas.itemconfig(fill_id, extent=angle)
 
-                # 다음 단계 예약
+                # 2. 점점 진해지는 회색 계산 (0~255)
+                intensity = int(255 * (progress / steps))
+                gray_hex = f"#{intensity:02x}{intensity:02x}{intensity:02x}"
+                self.canvas.itemconfig(fill_id, fill=gray_hex)
+
+                # 3. 다음 단계 예약
                 self.canvas.after(step_delay, lambda: animate_fill(progress + 1))
 
             # 🔥 반드시 즉시 시작해야 함!
