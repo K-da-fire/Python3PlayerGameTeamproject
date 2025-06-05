@@ -19,7 +19,7 @@ class Key:
                 canvas.delete(self.id)
             return
         color = "red" if self.owner == "p1" else "blue"
-        self.id = canvas.create_oval(self.x, self.y, self.x + self.size, self.y + self.size, fill=color)
+        self.id = canvas.create_oval(self.x, self.y, self.x + self.size, self.y + self.size, fill=color, tags="key")
 
     def check(self, player, player_id):
         if self.collected or self.owner != player_id:

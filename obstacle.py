@@ -12,8 +12,9 @@ class BaseObstacle:
         self.created_time = int(time.time() * 1000)
         self.id = self.canvas.create_rectangle(
             x, y, x + self.width, y + self.height,
-            fill="gray"
+            fill="gray", tags="obstacles"
         )
+        self.pending = False
 
     def is_expired(self):
         current_time = int(time.time() * 1000)
@@ -26,10 +27,8 @@ class BaseObstacle:
         px, py = player.x, player.y
         pw, ph = player.size, player.size
         return (
-            self.x < px + pw and
-            px < self.x + self.width and
-            self.y < py + ph and
-            py < self.y + self.height
+            self.x < px + pw and px < self.x + self.width and
+            self.y < py + ph and py < self.y + self.height
         )
 
     def apply_effect(self, player):
@@ -37,6 +36,8 @@ class BaseObstacle:
         pass
 
     def check_collision_rect(self, x, y, width, height):
+        if self.pending:
+            return False
         return not (
                 x + width < self.x or x > self.x + self.width or
                 y + height < self.y or y > self.y + self.height
@@ -44,7 +45,7 @@ class BaseObstacle:
 
 
 class WallObstacle(BaseObstacle):
-    def __init__(self, canvas, x, y, shape="square", color="black", duration=5000):
+    def __init__(self, canvas, x, y, shape="square", color="black", original_color="green", duration=5000):
         # shape: "square", "wide", "tall"
         if shape == "square":
             width, height = 60, 60
@@ -54,6 +55,7 @@ class WallObstacle(BaseObstacle):
             width, height = 40, 100
         else:
             width, height = 60, 60
+        self.original_color = original_color
         self.color = color
         super().__init__(canvas, x, y, width=width, height=height, duration=duration)
         self.canvas.itemconfig(self.id, fill=self.color)
@@ -61,28 +63,24 @@ class WallObstacle(BaseObstacle):
     def draw(self):
         self.id = self.canvas.create_rectangle(
             self.x, self.y, self.x + self.width, self.y + self.height,
-            fill=self.color
+            fill=self.color, tags="obstacles"
         )
 
     def apply_effect(self, player):
         pass  # 기본 충돌 처리
 
-    def check_collision(self, player):
-        # 플레이어의 위치와 장애물의 사각형 충돌 여부 계산
-        px, py = player.x, player.y
-        pw, ph = player.size, player.size
-
-        return not (
-                px + pw < self.x or px > self.x + self.width or
-                py + ph < self.y or py > self.y + self.height
-        )
+    def set_pending_false(self):
+        self.pending = False
+        self.canvas.itemconfig(self.id, fill="green")
+        self.color = self.original_color
 
 class SlowObstacle(WallObstacle):
     def __init__(self, canvas, x, y, shape="square", duration=5000):
-        super().__init__(canvas, x, y, shape=shape, color="blue", duration=duration)
+        super().__init__(canvas, x, y, shape=shape, original_color="blue", duration=duration)
 
     def apply_effect(self, player):
-        player.slow(0.3)
+        if not self.pending:
+            player.slow(0.3)
 
     def check_collision_rect(self, x, y, width, height):
         pass
@@ -90,10 +88,11 @@ class SlowObstacle(WallObstacle):
 
 class PushObstacle(WallObstacle):
     def __init__(self, canvas, x, y, shape="square", duration=5000):
-        super().__init__(canvas, x, y, shape=shape, color="purple", duration=duration)
+        super().__init__(canvas, x, y, shape=shape, original_color="purple", duration=duration)
 
     def apply_effect(self, player):
-        player.push_back(self.canvas)
+        if not self.pending:
+            player.push_back(self.canvas)
 
     def check_collision_rect(self, x, y, width, height):
         pass
@@ -101,13 +100,14 @@ class PushObstacle(WallObstacle):
 
 class DamageObstacle(WallObstacle):
     def __init__(self, canvas, x, y, shape="square", duration=5000):
-        super().__init__(canvas, x, y, shape=shape, color="red", duration=duration)
+        super().__init__(canvas, x, y, shape=shape, original_color="red", duration=duration)
         self.damaged_players = set()  # 이미 피해를 입힌 플레이어를 추적
 
     def apply_effect(self, player):
-        if player not in self.damaged_players:
-            player.get_damage(1)
-            self.damaged_players.add(player)
+        if not self.pending:
+            if player not in self.damaged_players:
+                player.get_damage(1)
+                self.damaged_players.add(player)
 
     def check_collision_rect(self, x, y, width, height):
         pass

@@ -7,6 +7,7 @@ class Player:
         self.x = x
         self.y = y
         self.size = TILE_SIZE
+        self.original_color = color
         self.color = color
         self.hp = 3
         self.keys = 0
@@ -72,11 +73,10 @@ class Player:
             self.id = canvas.create_rectangle(
                 self.x, self.y,
                 self.x + self.size, self.y + self.size,
-                fill=self.color
+                fill=self.original_color, tags="players"
             )
         else:
             canvas.coords(self.id, self.x, self.y, self.x + self.size, self.y + self.size)
-            canvas.itemconfig(self.id, fill=self.color)
 
     def handle_skill_selection(self, key):
         if not self.skill_manager:
@@ -134,12 +134,12 @@ class Player:
         self.hp -= dmg
         self.flash_black()
 
-    def flash_black(self, flashes=3, interval=200):
+    def flash_black(self, flashes=3, interval=400):
         def toggle(count=0):
             if count >= flashes * 2:
                 self.canvas.itemconfig(self.id, fill=self.color)
                 return
-            color = 'black' if count % 2 == 0 else self.color
+            color = "black" if count % 2 == 0 else self.original_color
             self.canvas.itemconfig(self.id, fill=color)
             self.canvas.after(interval, lambda: toggle(count + 1))
 
