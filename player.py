@@ -1,7 +1,8 @@
 from constants import TILE_SIZE
 
 class Player:
-    def __init__(self, x, y, color, control_type):
+    def __init__(self, x, y, color, control_type, canvas):
+        self.canvas = canvas
         self.id = None
         self.x = x
         self.y = y
@@ -67,11 +68,15 @@ class Player:
     def draw(self, canvas):
         if not self.is_active:
             return
-        canvas.create_rectangle(
-            self.x, self.y,
-            self.x + self.size, self.y + self.size,
-            fill=self.color
-        )
+        if self.id is None or not canvas.find_withtag(self.id):
+            self.id = canvas.create_rectangle(
+                self.x, self.y,
+                self.x + self.size, self.y + self.size,
+                fill=self.color
+            )
+        else:
+            canvas.coords(self.id, self.x, self.y, self.x + self.size, self.y + self.size)
+            canvas.itemconfig(self.id, fill=self.color)
 
     def handle_skill_selection(self, key):
         if not self.skill_manager:
@@ -125,12 +130,24 @@ class Player:
 
         step()  # 애니메이션 시작
 
+    def get_damage(self, dmg):
+        self.hp -= dmg
+        self.flash_black()
+
+    def flash_black(self, flashes=3, interval=200):
+        def toggle(count=0):
+            if count >= flashes * 2:
+                self.canvas.itemconfig(self.id, fill=self.color)
+                return
+            color = 'black' if count % 2 == 0 else self.color
+            self.canvas.itemconfig(self.id, fill=color)
+            self.canvas.after(interval, lambda: toggle(count + 1))
+
+        toggle()
+
     def is_dead(self):
         return self.hp <= 0
 
-    # TODO : 추후 사망 로직 생성 우선 방법 1로 생성
-    #  방법 1. 사망시 삭제 -> 탈락 -> P1, P2 모두 탈락시 P3 승리 추가
-    #  방법 2. 사망시 시작 장소로 이동 이 이 플레이어 만 다시 출발 -> 먹은 열쇠를 뱉어야 할지
     def die(self):
         self.hp = 0
         self.is_active = False  # 더 이상 move, draw 등 수행하지 않음

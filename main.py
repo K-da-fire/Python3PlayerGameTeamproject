@@ -1,6 +1,6 @@
 import tkinter as tk
 import time
-from gamemap import draw_map
+from gamemap import draw_map, draw_box
 from player import Player
 from key import Key, generate_non_overlapping_key_position
 from ui import draw_ui
@@ -27,24 +27,31 @@ def main():
     canvas.after(100, canvas.focus_set)
 
     # === 초기화 ===
-    p1 = Player(100, canvas_height - TILE_SIZE * 2, "red", "wasd")
-    p2 = Player(300, canvas_height - TILE_SIZE * 2, "blue", "arrow")
+    p1 = Player(100, canvas_height - TILE_SIZE * 2, "red", "wasd", canvas)
+    p2 = Player(300, canvas_height - TILE_SIZE * 2, "blue", "arrow", canvas)
+
+    p3_skills_name = ["정사각형 벽", "가로벽", "세로벽", "슬로우장판", "튕겨내기", "데미지"]
 
     p1_skills = SkillManager()
     p1_skills.add_skill("벽", 3000, 3)
     p2_skills = SkillManager()
     p2_skills.add_skill("벽", 3000, 3)
     p3_skills = SkillManager()
-    for _ in range(6):  # P3는 6개 슬롯
-        p3_skills.add_skill("벽", 3000, 3)
-
-    obstacles = []
-    p3 = Player3(canvas, p3_skills, obstacles)
+    for i in range(6):  # P3는 6개 슬롯
+        p3_skills.add_skill(p3_skills_name[i], 500, 10)
 
     keys_p1 = []
     keys_p2 = []
     existing_key_positions = []
     goal_area = (canvas_width - TILE_SIZE * 2, UI_HEIGHT + TILE_SIZE, TILE_SIZE, TILE_SIZE)
+    player_positions = [
+        (p1.x, p1.y),
+        (p2.x, p2.y)
+    ]
+    all_positions_to_avoid = existing_key_positions + player_positions
+    obstacles = draw_box(canvas, canvas_width, canvas_height,
+                         TILE_SIZE, UI_HEIGHT, all_positions_to_avoid, goal_area)
+    p3 = Player3(canvas, p3_skills, obstacles)
 
     for _ in range(3):  # p1 열쇠
         x, y = generate_non_overlapping_key_position(existing_key_positions, canvas_width, canvas_height,

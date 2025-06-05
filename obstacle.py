@@ -106,7 +106,7 @@ class DamageObstacle(WallObstacle):
 
     def apply_effect(self, player):
         if player not in self.damaged_players:
-            player.hp -= 1
+            player.get_damage(1)
             self.damaged_players.add(player)
 
     def check_collision_rect(self, x, y, width, height):
