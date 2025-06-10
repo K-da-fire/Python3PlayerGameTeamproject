@@ -1,4 +1,5 @@
-from constants import TILE_SIZE, POTION_COUNT_PER_PLAYER, POTION_HEAL_AMOUNT
+from constants import TILE_SIZE, POTION_COUNT_PER_PLAYER, POTION_HEAL_AMOUNT, \
+    PLAYER_INVINCIBILITY, PLAYER_SPEED_INV
 from PIL import Image, ImageTk
 import time
 import os
@@ -144,9 +145,9 @@ class Player:
                     print("use position")
                     self.use_potion()
                 elif self.selected_skill == 1:  # 속도 증가 스킬
-                    self.speed_boost(factor=2, duration=3000)  # 3초간 2배속
+                    self.speed_boost(factor=2, duration=PLAYER_SPEED_INV)  # 10초간 2배속
                 elif self.selected_skill == 2:  # 무적 스킬
-                    self.activate_invincibility(duration=2000)  # 2초간 무적
+                    self.activate_invincibility(duration=PLAYER_INVINCIBILITY)  # 5초간 무적
                 return True
         return False
 
@@ -157,7 +158,7 @@ class Player:
         if self.speed > self.default_speed and current_time >= self.speed_boost_end_time:
             self.speed = self.default_speed
 
-    def slow(self, factor, duration=3000):
+    def slow(self, factor, duration=PLAYER_SPEED_INV):
         current_time = int(time.time() * 1000)
         self.speed = self.default_speed * factor
         self.slow_end_time = max(self.slow_end_time, current_time + duration)

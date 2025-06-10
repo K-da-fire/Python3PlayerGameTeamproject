@@ -62,7 +62,7 @@ def main():
                                                      TILE_SIZE, UI_HEIGHT,
                                                      goal_area)
         existing_potion_positions.append((x, y))
-        potions_p1.append(Potion(x, y))
+        potions_p1.append(Potion(x, y, "p1"))
     for _ in range(POTION_COUNT_PER_PLAYER):
         x, y = generate_non_overlapping_key_position(existing_potion_positions,
                                                      canvas_width,
@@ -70,7 +70,7 @@ def main():
                                                      TILE_SIZE, UI_HEIGHT,
                                                      goal_area)
         existing_potion_positions.append((x, y))
-        potions_p2.append(Potion(x, y))
+        potions_p2.append(Potion(x, y, "p2"))
 
     all_obstacles = draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, all_positions_to_avoid, goal_area)
     p3 = Player3(canvas, p3_skills, all_obstacles)
@@ -150,8 +150,7 @@ def main():
     potion_message_timer = 0
     start_time = time.time()
 
-    def show_winner(winner_text):
-        color = winner_text.lower().split()[0]
+    def show_winner(winner_text, color = "Red"):
         canvas.create_text(canvas_width // 2, canvas_height // 2 - 40, text=winner_text, font=("Arial", 48), fill=color)
         def restart():
             retry_button.destroy()
@@ -232,15 +231,15 @@ def main():
 
         if p1.keys >= 3 and p1.is_in_goal_area(goal_area):
             game_over = True
-            show_winner("Red Wins!")
+            show_winner("Dog Wins!", "Red")
             return
         if p2.keys >= 3 and p2.is_in_goal_area(goal_area):
             game_over = True
-            show_winner("Blue Wins!")
+            show_winner("Cat Wins!", "Blue")
             return
         if p1.is_dead() and p2.is_dead() or time_left <= 0:
             game_over = True
-            show_winner("Green Wins!")
+            show_winner("Human Wins!", "Green")
             return
 
         root.after(GAME_TICK_MS, game_loop)
