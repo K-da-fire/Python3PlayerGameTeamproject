@@ -1,13 +1,14 @@
 import tkinter as tk
 import time
-from gamemap import draw_map
-from player import Player
+from gamemap import draw_map, draw_box
+from player import Player, Bullet # Bullet 클래스 임포트
 from key import Key, generate_non_overlapping_key_position
 from ui import draw_ui
 from constants import *
 from player3 import Player3
 from obstacle import *
 from skillmanager import SkillManager
+from skills import BlinkSkill, ShockwaveSkill
 
 root = tk.Tk()
 
@@ -27,124 +28,233 @@ def main():
     canvas.after(100, canvas.focus_set)
 
     # === 초기화 ===
-    p1 = Player(100, canvas_height - TILE_SIZE * 2, "red", "wasd")
-    p2 = Player(300, canvas_height - TILE_SIZE * 2, "blue", "arrow")
+    p1 = Player(100, canvas_height - TILE_SIZE * 2, "red", "wasd", canvas)
+    p2 = Player(300, canvas_height - TILE_SIZE * 2, "blue", "arrow", canvas)
+
+    # P3의 스킬 이름 목록 업데이트 (기존 유지)
+    p3_skills_name = ["정사각형 벽", "가로벽", "세로벽", "슬로우장판", "튕겨내기", "반대움직임", "데미지"]
 
     p1_skills = SkillManager()
-    p1_skills.add_skill("벽", 3000, 3)
+    p1_skills.add_skill("총알", 1000, 999)  # 쿨타임 1초
+    p1_skills.add_skill("속도증가", 10000, 999) # 쿨타임 10초
+    p1_skills.add_skill("무적", 30000, 999)   # 쿨타임 30초
+    p1_skills.skills.append(BlinkSkill("순간이동", 5000, 999))
+
     p2_skills = SkillManager()
-    p2_skills.add_skill("벽", 3000, 3)
+    p2_skills.add_skill("총알", 1000, 999)
+    p2_skills.add_skill("속도증가", 10000, 999)
+    p2_skills.add_skill("무적", 30000, 999)
+    p2_skills.skills.append(BlinkSkill("순간이동", 5000, 999))
+
     p3_skills = SkillManager()
-    for _ in range(6):  # P3는 6개 슬롯
-        p3_skills.add_skill("벽", 3000, 3)
+    p3_skills.add_skill("정사각형 벽", 3000, 999)
+    p3_skills.add_skill("가로벽", 3000, 999)
+    p3_skills.add_skill("세로벽", 3000, 999)
+    p3_skills.add_skill("슬로우장판", 5000, 5)
+    p3_skills.add_skill("튕겨내기", 5000, 5)
+    p3_skills.add_skill("반대움직임", 7000, 3)
+    p3_skills.add_skill("데미지", 10000, 2)
 
-    obstacles = []
-    p3 = Player3(canvas, p3_skills, obstacles)
+    p3_obstacles = [] # P3가 생성하는 장애물 목록
 
-    keys_p1 = []
-    keys_p2 = []
-    existing_key_positions = []
-    goal_area = (canvas_width - TILE_SIZE * 2, UI_HEIGHT + TILE_SIZE, TILE_SIZE, TILE_SIZE)
+    p3 = Player3(canvas, p3_skills, p3_obstacles, cooldown=500)
 
-    for _ in range(3):  # p1 열쇠
-        x, y = generate_non_overlapping_key_position(existing_key_positions, canvas_width, canvas_height,
-                                                    TILE_SIZE, UI_HEIGHT, goal_area)
-        existing_key_positions.append((x, y))
-        keys_p1.append(Key(x, y, "p1"))
+    p1.set_skill_manager(p1_skills)
+    p2.set_skill_manager(p2_skills)
 
-    for _ in range(3):  # p2 열쇠
-        x, y = generate_non_overlapping_key_position(existing_key_positions, canvas_width, canvas_height,
-                                                    TILE_SIZE, UI_HEIGHT, goal_area)
-        existing_key_positions.append((x, y))
-        keys_p2.append(Key(x, y, "p2"))
+    keys = []
+    goal_area = (canvas_width - TILE_SIZE * 2, UI_HEIGHT + TILE_SIZE,
+                 canvas_width - TILE_SIZE, UI_HEIGHT + TILE_SIZE * 2)
 
-    # === 이벤트 바인딩 ===
-    def on_key(event):
-        key = event.keysym.lower()
-        p1.pressed.add(event.keysym)
-        p2.pressed.add(event.keysym)
-        p1.handle_skill_selection(key)
-        p2.handle_skill_selection(key)
+    # 맵 및 키 생성
+    all_obstacles = draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, [], goal_area)
+    
+    # 기존 장애물과 키의 위치를 (x, y) 튜플 리스트로 결합
+    existing_positions_for_key_generation = [(o.x, o.y) for o in all_obstacles] + [(k.x, k.y) for k in keys]
 
-    def on_key_up(event):
-        p1.pressed.discard(event.keysym)
-        p2.pressed.discard(event.keysym)
+    for _ in range(3):  # 각 플레이어별 3개의 키 생성
+        key_pos = generate_non_overlapping_key_position(
+            existing_positions_for_key_generation,
+            canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, goal_area
+        )
+        keys.append(Key(key_pos[0], key_pos[1], "p1"))
+        existing_positions_for_key_generation.append(key_pos) # 새로 생성된 키 위치 추가
 
-    def on_mouse_click(event):
-        obstacle = p3.spawn_obstacle(event.x, event.y)
-        if obstacle:
-            obstacles.append(obstacle)
+        key_pos = generate_non_overlapping_key_position(
+            existing_positions_for_key_generation,
+            canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, goal_area
+        )
+        keys.append(Key(key_pos[0], key_pos[1], "p2"))
+        existing_positions_for_key_generation.append(key_pos) # 새로 생성된 키 위치 추가
+
+
+    game_over = False
+    start_time = time.time()
+    last_update_time = int(time.time() * 1000)
+
+    # === 이벤트 핸들러 ===
+    def on_key_press(event):
+        if event.keysym in ["w", "a", "s", "d"]:
+            p1.pressed.add(event.keysym)
+        elif event.keysym in ["Up", "Down", "Left", "Right"]:
+            p2.pressed.add(event.keysym)
+        # P1 스킬 사용 키 바인딩
+        elif event.keysym == "c":
+            p1.use_selected_skill()
+        elif event.keysym == "v":
+            p1.selected_skill = 1
+            p1.use_selected_skill()
+        elif event.keysym == "b":
+            p1.selected_skill = 2
+            p1.use_selected_skill()
+        elif event.keysym == "n":
+            p1.selected_skill = 3 
+            p1.use_selected_skill()
+ 
+            
+        # P2 스킬 사용 키 바인딩
+        elif event.keysym == "comma": # <
+            p2.use_selected_skill()
+        elif event.keysym == "period": # >
+            p2.selected_skill = 1
+            p2.use_selected_skill()
+        elif event.keysym == "slash": # ?
+            p2.selected_skill = 2
+            p2.use_selected_skill()
+        elif event.keysym == "semicolon":  
+            p2.selected_skill = 3  
+            p2.use_selected_skill()
+
+
+        # P1 스킬 선택 키 바인딩
+        elif event.keysym == "C": # C
+            p1.handle_skill_selection("c")
+        elif event.keysym == "V": # V
+            p1.handle_skill_selection("v")
+        elif event.keysym == "B": # B
+            p1.handle_skill_selection("b")
+        # P2 스킬 선택 키 바인딩
+        elif event.keysym == "less": # <
+            p2.handle_skill_selection("comma")
+        elif event.keysym == "greater": # >
+            p2.handle_skill_selection("period")
+        elif event.keysym == "question": # ?
+            p2.handle_skill_selection("slash")
+
+        # P3 스킬 사용 키 (예시)
+        elif event.keysym == "q":  # P3 스킬 사용 키 (예시)
+            obs = p3.spawn_obstacle(p1.x, p1.y + p1.size // 2)  # P1 위치에 스폰 (수정 필요)
+            if obs:
+                all_obstacles.append(obs)
+        elif event.keysym == "e": # P3 스킬 사용 키 (예시)
+            obs = p3.spawn_obstacle(p2.x, p2.y + p2.size // 2) # P2 위치에 스폰 (수정 필요)
+            if obs:
+                all_obstacles.append(obs)
+
+
+    def on_key_release(event):
+        if event.keysym in ["w", "a", "s", "d"]:
+            p1.pressed.discard(event.keysym)
+        elif event.keysym in ["Up", "Down", "Left", "Right"]:
+            p2.pressed.discard(event.keysym)
 
     def on_mousewheel(event):
         p3.handle_mousewheel(event.delta)
 
-    canvas.bind_all("<KeyPress>", on_key)
-    canvas.bind_all("<KeyRelease>", on_key_up)
-    canvas.bind("<Button-1>", on_mouse_click)
-    canvas.bind_all("<MouseWheel>", on_mousewheel)
+    def on_mouse_click(event):
+        if event.num == 1: # 좌클릭
+            obs = p3.spawn_obstacle(event.x, event.y)
+            if obs:
+                all_obstacles.append(obs)
+
+
+    root.bind("<KeyPress>", on_key_press)
+    root.bind("<KeyRelease>", on_key_release)
+    root.bind("<MouseWheel>", on_mousewheel) # 마우스 휠 이벤트 바인딩
+    root.bind("<Button-1>", on_mouse_click) # 마우스 클릭 이벤트 바인딩
 
     # === 게임 루프 ===
-    game_over = False
-    start_time = time.time()
+    def game_loop():
+        nonlocal game_over, last_update_time
 
-    def loop():
-        nonlocal game_over
         if game_over:
             return
 
-        if p1.is_dead():
-            p1.die()
-        if p2.is_dead():
-            p2.die()
+        current_time_ms = int(time.time() * 1000)
+        elapsed_ms = current_time_ms - last_update_time
+        last_update_time = current_time_ms
 
+        # 1. 플레이어 이동
+        p1.move(canvas_width, canvas_height, UI_HEIGHT, all_obstacles)
+        p2.move(canvas_width, canvas_height, UI_HEIGHT, all_obstacles)
+
+        # 2. 총알 이동 및 충돌 검사
+        for player in [p1, p2]:
+            for bullet in player.bullets[:]: # 리스트 복사본으로 반복하여 안전하게 제거
+                if bullet.active:
+                    bullet.move(canvas_width, canvas_height, UI_HEIGHT, [p for p in [p1, p2] if p is not player])
+                else:
+                    player.bullets.remove(bullet)
+
+
+        # 3. P3 장애물 업데이트 (만료된 장애물 제거)
+        p3.update_obstacles()
+        all_obstacles[:] = [obs for obs in all_obstacles if not obs.is_expired()]
+
+        # 4. 충돌 검사 및 효과 적용
+        for player in [p1, p2]:
+            if player.is_active:
+                for key in keys:
+                    key.check(player, "p1" if player is p1 else "p2")
+                p3.check_collisions(player) # P3 장애물과 충돌 검사 및 효과 적용
+                
+                # 플레이어가 무적 상태가 아닐 때만 장애물과 충돌 처리
+                if not player.is_invincible:
+                    for obs in all_obstacles:
+                        if obs.check_collision(player):
+                            obs.apply_effect(player)
+
+        # 5. 스킬 쿨다운 업데이트
+        p1_skills.update(elapsed_ms)
+        p2_skills.update(elapsed_ms)
+        p3_skills.update(elapsed_ms)
+        # 총알 그리기 (각 플레이어 총알들을 이동 후 그리기)
+        for player in [p1, p2]:
+            for bullet in player.bullets:
+                if bullet.active:
+                    bullet.draw(canvas)
+
+        # 6. UI 그리기
         canvas.delete("all")
-
-        #1. 시간 계산
-        now = time.time()
-        elapsed = now - start_time
-        time_left = max(0, GAME_DURATION - elapsed)
-
-        #2. 맵, UI
         draw_map(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT)
-        draw_ui(canvas, canvas_width, UI_HEIGHT, p1.keys, p2.keys,
-                p1.hp, p2.hp, p3.hp, time_left,
-                p1.selected_skill, p2.selected_skill, p3.selected_skill_index,
-                p1_skills, p2_skills, p3_skills)
-        for obstacle in obstacles:
-            obstacle.draw()
+        for obs in all_obstacles:
+            obs.draw() # 장애물 그리기 (WallObstacle에 draw 메서드 추가 필요)
 
-        #3. 플레이어 이동 및 그리기
-        p1.move(canvas_width, canvas_height, UI_HEIGHT, obstacles)
-        p2.move(canvas_width, canvas_height, UI_HEIGHT, obstacles)
+        for key in keys:
+            key.draw(canvas)
+
         p1.draw(canvas)
         p2.draw(canvas)
 
-        #4. 열쇠 아이템 처리
-        for k in keys_p1:
-            k.draw(canvas)
-            k.check(p1, "p1")
-        for k in keys_p2:
-            k.draw(canvas)
-            k.check(p2, "p2")
+        # 총알 그리기
+        for player in [p1,p2]:
+            for bullet in player.bullets:
+                if bullet.active:
+                    bullet.draw(canvas)
 
-        #5. 장애물 처리
-        p3.update_obstacles()
-        for obs in p3.obstacles[:]:
-            if obs.is_expired():
-                p3.obstacles.remove(obs)
-                obs.remove()
-            else:
-                canvas.tag_raise(obs.id)
-                for player in [p1, p2]:
-                    if obs.check_collision(player):
-                        obs.apply_effect(player)
 
-        #6. 스킬 쿨타임 업데이트
-        p1_skills.update(GAME_TICK_MS)
-        p2_skills.update(GAME_TICK_MS)
-        p3_skills.update(GAME_TICK_MS)
+        time_left = GAME_DURATION - (time.time() - start_time)
+        if time_left <= 0:
+            game_over = True
+            show_winner("Time Over!")
+            return
 
-        # 승리 처리 함수
+        draw_ui(canvas, canvas_width, UI_HEIGHT,
+                p1.keys, p2.keys,
+                p1.hp, p2.hp, p3.hp, time_left,
+                p1.selected_skill, p2.selected_skill, p3.selected_skill_index,
+                p1_skills, p2_skills, p3_skills)
+
         def show_winner(winner_text):
             color = winner_text.lower().split()[0]
             canvas.create_text(canvas_width // 2, canvas_height // 2 - 40,
@@ -152,7 +262,6 @@ def main():
 
             def restart():
                 retry_button.destroy()
-                # canvas.delete("all")
                 if canvas:
                     canvas.destroy()
                 main()  # 전체 게임 재시작
@@ -177,15 +286,14 @@ def main():
             draw_ui(canvas, canvas_width, UI_HEIGHT, p1.keys, p2.keys,
                     p1.hp, p2.hp, p3.hp, time_left,
                     p1.selected_skill, p2.selected_skill, p3.selected_skill_index,
-                    p1_skills, p2_skills, p3_skills)
-            show_winner("Green Wins!")
+                    p1_skills, p2_skills, p3_skills) # HP 상태 업데이트
+            show_winner("Draw!")
             return
 
-        #7. 다음 프레임 예약
-        canvas.after(GAME_TICK_MS, loop)
+        root.after(GAME_TICK_MS, game_loop)
 
-    loop()
-
-if __name__ == '__main__':
-    main()
+    game_loop()
     root.mainloop()
+
+if __name__ == "__main__":
+    main()

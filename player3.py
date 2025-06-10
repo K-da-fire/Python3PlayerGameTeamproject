@@ -1,4 +1,4 @@
-from obstacle import WallObstacle, SlowObstacle, PushObstacle, DamageObstacle
+from obstacle import WallObstacle, SlowObstacle, PushObstacle, DamageObstacle, ReverseObstacle # ReverseObstacle import
 import time
 
 class Player3:
@@ -35,12 +35,14 @@ class Player3:
                     obstacle = WallObstacle(self.canvas, x, y, shape="wide")
                 elif self.selected_skill_index == 2:
                     obstacle = WallObstacle(self.canvas, x, y, shape="tall")
-                    # 슬롯 3~5: 효과 벽 (각각 다른 클래스로)
+                    # 슬롯 3~6: 효과 벽 (각각 다른 클래스로)
                 elif self.selected_skill_index == 3:
                     obstacle = SlowObstacle(self.canvas, x, y, shape="square")
                 elif self.selected_skill_index == 4:
                     obstacle = PushObstacle(self.canvas, x, y, shape="square")
-                elif self.selected_skill_index == 5:
+                elif self.selected_skill_index == 5: # 새로운 스킬 슬롯
+                    obstacle = ReverseObstacle(self.canvas, x, y, shape="square")
+                elif self.selected_skill_index == 6: # 기존 데미지 스킬은 다음 슬롯으로
                     obstacle = DamageObstacle(self.canvas, x, y, shape="square")
                 else:
                     return None
