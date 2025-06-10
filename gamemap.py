@@ -37,7 +37,7 @@ def draw_map(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT):
         fill="green", tags="map"
     )
 
-def draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, key_positions, goal_area):
+def draw_box(canvas, canvas_width, canvas_height, tile_size, ui_height, key_positions, goal_area):
     obstacles = []
     existing_positions = key_positions.copy()
 
@@ -47,9 +47,9 @@ def draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, key_posi
         x, y = generate_non_overlapping_obstacle_position(
             existing_positions,
             canvas_width, canvas_height,
-            TILE_SIZE, UI_HEIGHT,
+            tile_size, ui_height,
             goal_area,
-            min_distance=60
+            min_distance=tile_size / 2
         )
         existing_positions.append((x, y))
 

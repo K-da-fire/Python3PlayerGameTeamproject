@@ -1,4 +1,5 @@
-from constants import TILE_SIZE
+from constants import TILE_SIZE, POTION_COUNT_PER_PLAYER, POTION_HEAL_AMOUNT, \
+    PLAYER_INVINCIBILITY, PLAYER_SPEED_INV
 from PIL import Image, ImageTk
 import time
 import os
@@ -32,6 +33,7 @@ class Player:
         self.is_invincible = False
         self.invincible_end_time = 0
         self.bullets = []
+        self.potions = POTION_COUNT_PER_PLAYER  # 시작 포션 개수
 
         # 이미지 캐싱 처리
         if control_type not in Player.image_cache:
@@ -58,8 +60,8 @@ class Player:
 
             # 무적 상태 해제 확인
         if self.is_invincible and current_time >= self.invincible_end_time:
-          self.is_invincible = False
-          self.color = "red" if self.control_type == "wasd" else "blue"  # 원래 색상으로 복원
+            self.is_invincible = False
+            self.color = "red" if self.control_type == "wasd" else "blue"  # 원래 색상으로 복원
 
         dx = dy = 0
         if self.control_type == "wasd":
@@ -82,9 +84,6 @@ class Player:
             self.last_dy = dy
 
         new_x, new_y = self.x + dx, self.y + dy
-        for obs in obstacles:
-            if obs.check_collision_rect(new_x, new_y, self.size, self.size):
-                return
 
         # 충돌 검사 (무적 상태일 때는 장애물 무시)
         if not self.is_invincible:
@@ -118,6 +117,7 @@ class Player:
 
     def handle_skill_selection(self, key):
         if not self.skill_manager:
+            print("no skill manager")
             return
 
         # P1 스킬 선택 (C, V, B)
@@ -128,8 +128,6 @@ class Player:
             self.selected_skill = 1
           elif key == "b":
             self.selected_skill = 2
-          elif key == "n":
-            self.selected_skill = 3
         # P2 스킬 선택 (<, >, ?)
         elif self.control_type == "arrow":
           if key == "comma":  # <
@@ -138,28 +136,18 @@ class Player:
             self.selected_skill = 1
           elif key == "slash":  # ?
             self.selected_skill = 2
-            # elif key == ";":
-            #     self.selected_skill = 3
 
     def use_selected_skill(self, target_player=None):
         if self.skill_manager:
             skill = self.skill_manager.get_selected_skill(self.selected_skill)
             if skill and skill.use():
-                if self.selected_skill == 0:
-                    bullet_dx = 1 if self.last_dx == 0 and self.last_dy == 0 else self.last_dx
-                    bullet_dy = 0 if self.last_dx == 0 and self.last_dy == 0 else self.last_dy
-                    norm = (bullet_dx ** 2 + bullet_dy ** 2) ** 0.5
-                    bullet_dx /= norm
-                    bullet_dy /= norm
-                    bullet_speed = 15
-                    new_bullet = Bullet(self.canvas, self.x + self.size // 2, self.y + self.size // 2,
-                                        bullet_dx * bullet_speed, bullet_dy * bullet_speed,
-                                        self.color, self)
-                    self.bullets.append(new_bullet)
-                elif self.selected_skill == 1:
-                    self.speed_boost(factor=2, duration=3000)
-                elif self.selected_skill == 2:
-                    self.activate_invincibility(duration=2000)
+                if self.selected_skill == 0:  # 포션 사용 스킬
+                    print("use position")
+                    self.use_potion()
+                elif self.selected_skill == 1:  # 속도 증가 스킬
+                    self.speed_boost(factor=2, duration=PLAYER_SPEED_INV)  # 10초간 2배속
+                elif self.selected_skill == 2:  # 무적 스킬
+                    self.activate_invincibility(duration=PLAYER_INVINCIBILITY)  # 5초간 무적
                 return True
         return False
 
@@ -170,7 +158,7 @@ class Player:
         if self.speed > self.default_speed and current_time >= self.speed_boost_end_time:
             self.speed = self.default_speed
 
-    def slow(self, factor, duration=3000):
+    def slow(self, factor, duration=PLAYER_SPEED_INV):
         current_time = int(time.time() * 1000)
         self.speed = self.default_speed * factor
         self.slow_end_time = max(self.slow_end_time, current_time + duration)
@@ -182,7 +170,7 @@ class Player:
 
 
     def push_back(self, canvas, distance=30, steps=10, delay=20):
-        # Calculate the push back direction based on the last movement.
+        # Calculate the pushback direction based on the last movement.
         # If last_dx or last_dy is 0, set a default push direction (e.g., away from center or a fixed direction).
         if self.last_dx == 0 and self.last_dy == 0:
             # Default push if no recent movement (e.g., push left)
@@ -216,20 +204,33 @@ class Player:
         self.invincible_end_time = int(time.time() * 1000) + duration
 
     def get_damage(self, dmg):
-        self.hp -= dmg
-        self.flash_black()
+        if not self.is_invincible:  # 무적 상태가 아닐 때만 데미지 적용
+            self.hp -= dmg
+            # self.flash_black()
+            if self.hp <= 0:
+                self.die()
 
-    def flash_black(self, flashes=3, interval=400):
-        def toggle(count=0):
-            if count >= flashes * 2:
-                return
-            color = "black" if count % 2 == 0 else self.original_color
-            self.canvas.itemconfig(self.id, fill=color)
-            self.canvas.after(interval, lambda: toggle(count + 1))
-        toggle()
+    # def flash_black(self, flashes=3, interval=400):
+    #     def toggle(count=0):
+    #         if count >= flashes * 2:
+    #             return
+    #         color = "black" if count % 2 == 0 else self.original_color
+    #         self.canvas.itemconfig(self.id, fill=color)
+    #         self.canvas.after(interval, lambda: toggle(count + 1))
+    #     toggle()
 
     def is_dead(self):
         return self.hp <= 0
+
+    def is_in_goal_area(player, goal_area):
+        px, py = player.x, player.y
+        pw, ph = player.size, player.size
+        gx, gy, gw, gh = goal_area
+
+        return not (
+            px + pw < gx or px > gx + gw or
+            py + ph < gy or py > gy + gh
+        )
 
     def die(self):
         self.hp = 0
@@ -239,52 +240,26 @@ class Player:
         if self.id:
             self.canvas.coords(self.id, self.x + self.size // 2, self.y + self.size // 2)
 
+    def heal(self, amount):
+        self.hp = min(self.hp + amount, 3)  # 최대 HP 초과 불가
 
-class Bullet:
-    def __init__(self, canvas, x, y, dx, dy, color, owner_player):
-        self.canvas = canvas
-        self.x = x
-        self.y = y
-        self.dx = dx
-        self.dy = dy
-        self.color = color
-        self.size = TILE_SIZE // 4
-        self.id = canvas.create_oval(x - self.size, y - self.size,
-                                     x + self.size, y + self.size,
-                                     fill=color)
-        self.active = True
-        self.owner = owner_player
+    def use_potion(self):
+        if self.potions > 0 and self.hp < 3:
+            self.potions -= 1
+            self.heal(POTION_HEAL_AMOUNT)
+            # self.flash_green()  # 회복 효과 시각화
 
-    def move(self, canvas_width, canvas_height, ui_height, target_players):
-        if not self.active:
-            return
+    # def flash_green(self, flashes=3, interval=200):
+    #     def toggle(count=0):
+    #         if count >= flashes * 2:
+    #             self.canvas.itemconfig(self.id, fill=self.color)
+    #             return
+    #         color = 'green' if count % 2 == 0 else self.color
+    #         self.canvas.itemconfig(self.id, fill=color)
+    #         self.canvas.after(interval, lambda: toggle(count + 1))
 
-        self.x += self.dx
-        self.y += self.dy
-
-        if not (0 <= self.x < canvas_width and ui_height <= self.y < canvas_height):
-            self.deactivate()
-            return
-
-        self.canvas.coords(self.id, self.x - self.size, self.y - self.size,
-                           self.x + self.size, self.y + self.size)
-
-        for player in target_players:
-            if player is not self.owner and player.is_active and self.check_collision(player):
-                player.get_damage(1)
-                self.deactivate()
-                return
-
-    def check_collision(self, player):
-        px, py = player.x, player.y
-        pw, ph = player.size, player.size
-        return (self.x - self.size < px + pw and
-                px < self.x + self.size and
-                self.y - self.size < py + ph and
-                py < self.y + self.size)
-
-    def deactivate(self):
-        if self.id:
-            self.canvas.delete(self.id)
-            self.id = None
-        self.active = False
+    def add_potion(self, amount=1):
+        self.potions += amount
+            # 포션 숫자 강조 효과를 쓸 경우:
+        # if hasattr(self, "potion_scale_timer"):
+        #     self.potion_scale_timer = 8

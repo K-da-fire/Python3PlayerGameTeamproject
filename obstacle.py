@@ -1,5 +1,6 @@
 import time
-from constants import TILE_SIZE
+from constants import TILE_SIZE, OBSTACLE_SIZE
+
 
 class BaseObstacle:
     def __init__(self, canvas, x, y, size=None, width=None, height=None, duration=5000):
@@ -48,13 +49,13 @@ class WallObstacle(BaseObstacle):
     def __init__(self, canvas, x, y, shape="square", color="black", original_color="green", duration=5000):
         # shape: "square", "wide", "tall"
         if shape == "square":
-            width, height = 60, 60
+            width, height = OBSTACLE_SIZE, OBSTACLE_SIZE
         elif shape == "wide":
-            width, height = 100, 40
+            width, height = OBSTACLE_SIZE * 2, OBSTACLE_SIZE
         elif shape == "tall":
-            width, height = 40, 100
+            width, height = OBSTACLE_SIZE, OBSTACLE_SIZE * 2
         else:
-            width, height = 60, 60
+            width, height = OBSTACLE_SIZE, OBSTACLE_SIZE
         self.original_color = original_color
         self.color = color
         super().__init__(canvas, x, y, width=width, height=height, duration=duration)
