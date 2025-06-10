@@ -8,6 +8,7 @@ from constants import *
 from player3 import Player3
 from obstacle import *
 from skillmanager import SkillManager
+from skills import BaseSkill, BlinkSkill
 
 root = tk.Tk()
 
@@ -33,12 +34,23 @@ def main():
     p3_skills_name = ["정사각형 벽", "가로벽", "세로벽", "슬로우장판", "튕겨내기", "데미지"]
 
     p1_skills = SkillManager()
-    p1_skills.add_skill("벽", 3000, 3)
+    p1_skills.add_skill("총알", 1000, 999)  # 쿨타임 1초
+    p1_skills.add_skill("속도증가", 10000, 999)  # 쿨타임 10초
+    p1_skills.add_skill("무적", 30000, 999)  # 쿨타임 30초
+
     p2_skills = SkillManager()
-    p2_skills.add_skill("벽", 3000, 3)
+    p2_skills.add_skill("총알", 1000, 999)
+    p2_skills.add_skill("속도증가", 10000, 999)
+    p2_skills.add_skill("무적", 30000, 999)
+
     p3_skills = SkillManager()
-    for i in range(6):  # P3는 6개 슬롯
-        p3_skills.add_skill(p3_skills_name[i], 500, 10)
+    p3_skills.add_skill("정사각형 벽", 3000, 999)
+    p3_skills.add_skill("가로벽", 3000, 999)
+    p3_skills.add_skill("세로벽", 3000, 999)
+    p3_skills.add_skill("슬로우장판", 5000, 5)
+    p3_skills.add_skill("튕겨내기", 5000, 5)
+    p3_skills.add_skill("반대움직임", 7000, 3)
+    p3_skills.add_skill("데미지", 10000, 2)
 
     keys_p1 = []
     keys_p2 = []
@@ -54,16 +66,22 @@ def main():
     p3 = Player3(canvas, p3_skills, obstacles)
 
     for _ in range(3):  # p1 열쇠
-        x, y = generate_non_overlapping_key_position(existing_key_positions, canvas_width, canvas_height,
-                                                    TILE_SIZE, UI_HEIGHT, goal_area)
+        x, y = generate_non_overlapping_key_position(existing_key_positions,
+                                                     canvas_width,
+                                                     canvas_height,
+                                                     TILE_SIZE, UI_HEIGHT,
+                                                     goal_area)
         existing_key_positions.append((x, y))
-        keys_p1.append(Key(x, y, "p1"))
+        keys_p1.append(Key(x, y, "p1", canvas))  # ✅ canvas 추가
 
     for _ in range(3):  # p2 열쇠
-        x, y = generate_non_overlapping_key_position(existing_key_positions, canvas_width, canvas_height,
-                                                    TILE_SIZE, UI_HEIGHT, goal_area)
+        x, y = generate_non_overlapping_key_position(existing_key_positions,
+                                                     canvas_width,
+                                                     canvas_height,
+                                                     TILE_SIZE, UI_HEIGHT,
+                                                     goal_area)
         existing_key_positions.append((x, y))
-        keys_p2.append(Key(x, y, "p2"))
+        keys_p2.append(Key(x, y, "p2", canvas))  # ✅ canvas 추가
 
     # === 이벤트 바인딩 ===
     def on_key(event):
@@ -104,7 +122,10 @@ def main():
         if p2.is_dead():
             p2.die()
 
-        canvas.delete("all")
+        # canvas.delete("all")
+        canvas.delete("player")
+        # canvas.delete("all")
+        # canvas.delete("all")
 
         #1. 시간 계산
         now = time.time()
@@ -128,10 +149,10 @@ def main():
 
         #4. 열쇠 아이템 처리
         for k in keys_p1:
-            k.draw(canvas)
+            k.draw()
             k.check(p1, "p1")
         for k in keys_p2:
-            k.draw(canvas)
+            k.draw()
             k.check(p2, "p2")
 
         #5. 장애물 처리
