@@ -58,8 +58,8 @@ class Player:
 
             # 무적 상태 해제 확인
         if self.is_invincible and current_time >= self.invincible_end_time:
-            self.is_invincible = False
-            self.color = "red" if self.control_type == "wasd" else "blue" # 원래 색상으로 복원
+          self.is_invincible = False
+          self.color = "red" if self.control_type == "wasd" else "blue"  # 원래 색상으로 복원
 
         dx = dy = 0
         if self.control_type == "wasd":
@@ -122,24 +122,24 @@ class Player:
 
         # P1 스킬 선택 (C, V, B)
         if self.control_type == "wasd":
-            if key == "c":
-                self.selected_skill = 0
-            elif key == "v":
-                self.selected_skill = 1
-            elif key == "b":
-                self.selected_skill = 2
-            elif key == "n":
-                self.selected_skill = 3
+          if key == "c":
+            self.selected_skill = 0
+          elif key == "v":
+            self.selected_skill = 1
+          elif key == "b":
+            self.selected_skill = 2
+          elif key == "n":
+            self.selected_skill = 3
         # P2 스킬 선택 (<, >, ?)
         elif self.control_type == "arrow":
-            if key == "comma": # <
-                self.selected_skill = 0
-            elif key == "period": # >
-                self.selected_skill = 1
-            elif key == "slash": # ?
-                self.selected_skill = 2
-            elif key == ";":
-                self.selected_skill = 3
+          if key == "comma":  # <
+            self.selected_skill = 0
+          elif key == "period":  # >
+            self.selected_skill = 1
+          elif key == "slash":  # ?
+            self.selected_skill = 2
+            # elif key == ";":
+            #     self.selected_skill = 3
 
     def use_selected_skill(self, target_player=None):
         if self.skill_manager:
