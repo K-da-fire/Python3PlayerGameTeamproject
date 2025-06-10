@@ -238,7 +238,7 @@ def main():
             game_over = True
             show_winner("Blue Wins!")
             return
-        if p1.is_dead() and p2.is_dead():
+        if p1.is_dead() and p2.is_dead() or time_left <= 0:
             game_over = True
             show_winner("Green Wins!")
             return
