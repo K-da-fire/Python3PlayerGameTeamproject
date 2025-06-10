@@ -1,4 +1,4 @@
-from obstacle import WallObstacle, SlowObstacle, PushObstacle, DamageObstacle
+from obstacle import WallObstacle, SlowObstacle, PushObstacle, DamageObstacle, ReverseObstacle # ReverseObstacle import
 import time
 
 class Player3:
@@ -28,26 +28,25 @@ class Player3:
 
         if self.can_place_obstacle():
             success = skill.use()
-            if not success:
-                return None
 
-            # 장애물 바로 생성
-            if self.selected_skill_index == 0:
-                obstacle = WallObstacle(self.canvas, x, y, shape="square")
-            elif self.selected_skill_index == 1:
-                obstacle = WallObstacle(self.canvas, x, y, shape="wide")
-            elif self.selected_skill_index == 2:
-                obstacle = WallObstacle(self.canvas, x, y, shape="tall")
-            elif self.selected_skill_index == 3:
-                obstacle = SlowObstacle(self.canvas, x, y, shape="square")
-            elif self.selected_skill_index == 4:
-                obstacle = PushObstacle(self.canvas, x, y, shape="square")
-            elif self.selected_skill_index == 5:
-                obstacle = DamageObstacle(self.canvas, x, y, shape="square")
-            else:
-                return None
-
-            obstacle.pending = True
+            if success:
+                if self.selected_skill_index == 0:
+                    obstacle = WallObstacle(self.canvas, x, y, shape="square")
+                elif self.selected_skill_index == 1:
+                    obstacle = WallObstacle(self.canvas, x, y, shape="wide")
+                elif self.selected_skill_index == 2:
+                    obstacle = WallObstacle(self.canvas, x, y, shape="tall")
+                    # 슬롯 3~6: 효과 벽 (각각 다른 클래스로)
+                elif self.selected_skill_index == 3:
+                    obstacle = SlowObstacle(self.canvas, x, y, shape="square")
+                elif self.selected_skill_index == 4:
+                    obstacle = PushObstacle(self.canvas, x, y, shape="square")
+                elif self.selected_skill_index == 5: # 새로운 스킬 슬롯
+                    obstacle = ReverseObstacle(self.canvas, x, y, shape="square")
+                elif self.selected_skill_index == 6: # 기존 데미지 스킬은 다음 슬롯으로
+                    obstacle = DamageObstacle(self.canvas, x, y, shape="square")
+                else:
+                    return None
             self.obstacles.append(obstacle)
             self.canvas.after(1000, lambda: self.activate_obstacle(obstacle))
 

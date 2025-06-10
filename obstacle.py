@@ -93,6 +93,21 @@ class PushObstacle(WallObstacle):
     def apply_effect(self, player):
         if not self.pending:
             player.push_back(self.canvas)
+        player.push_back(self.canvas) # 첫 번째 코드처럼 밀쳐내는 기능 유지
+
+    def check_collision_rect(self, x, y, width, height):
+        pass
+
+
+class ReverseObstacle(WallObstacle): # 새로운 역방향 이동 장애물
+    def __init__(self, canvas, x, y, shape="square", duration=5000):
+        super().__init__(canvas, x, y, shape=shape, color="orange", duration=duration) # 색상 변경
+        self.affected_players = set() # 이미 효과를 적용받은 플레이어를 추적
+
+    def apply_effect(self, player):
+        if player not in self.affected_players:
+            player.start_reverse_movement(duration=3000) # 3초 동안 역방향 이동
+            self.affected_players.add(player)
 
     def check_collision_rect(self, x, y, width, height):
         pass

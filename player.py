@@ -56,6 +56,11 @@ class Player:
         if self.is_invincible and current_time >= self.invincible_end_time:
             self.is_invincible = False
 
+            # 무적 상태 해제 확인
+        if self.is_invincible and current_time >= self.invincible_end_time:
+          self.is_invincible = False
+          self.color = "red" if self.control_type == "wasd" else "blue"  # 원래 색상으로 복원
+
         dx = dy = 0
         if self.control_type == "wasd":
             if "w" in self.pressed: dy -= self.speed
@@ -80,6 +85,12 @@ class Player:
         for obs in obstacles:
             if obs.check_collision_rect(new_x, new_y, self.size, self.size):
                 return
+
+        # 충돌 검사 (무적 상태일 때는 장애물 무시)
+        if not self.is_invincible:
+          for obs in obstacles:
+            if obs.check_collision_rect(new_x, new_y, self.size, self.size):
+              return  # 이동하지 않음
 
         if 0 <= new_x <= canvas_width - self.size:
             self.x = new_x
@@ -108,10 +119,27 @@ class Player:
     def handle_skill_selection(self, key):
         if not self.skill_manager:
             return
+
+        # P1 스킬 선택 (C, V, B)
         if self.control_type == "wasd":
-            self.selected_skill = {"c": 0, "v": 1, "b": 2}.get(key, self.selected_skill)
+          if key == "c":
+            self.selected_skill = 0
+          elif key == "v":
+            self.selected_skill = 1
+          elif key == "b":
+            self.selected_skill = 2
+          elif key == "n":
+            self.selected_skill = 3
+        # P2 스킬 선택 (<, >, ?)
         elif self.control_type == "arrow":
-            self.selected_skill = {"comma": 0, "period": 1, "slash": 2}.get(key, self.selected_skill)
+          if key == "comma":  # <
+            self.selected_skill = 0
+          elif key == "period":  # >
+            self.selected_skill = 1
+          elif key == "slash":  # ?
+            self.selected_skill = 2
+            # elif key == ";":
+            #     self.selected_skill = 3
 
     def use_selected_skill(self, target_player=None):
         if self.skill_manager:
@@ -147,9 +175,30 @@ class Player:
         self.speed = self.default_speed * factor
         self.slow_end_time = max(self.slow_end_time, current_time + duration)
 
+    def speed_boost(self, factor, duration=3000):
+        current_time = int(time.time() * 1000)
+        self.speed = self.default_speed * factor
+        self.speed_boost_end_time = max(self.speed_boost_end_time, current_time + duration)
+
+
     def push_back(self, canvas, distance=30, steps=10, delay=20):
-        dx = -self.last_dx * (distance / steps)
-        dy = -self.last_dy * (distance / steps)
+        # Calculate the push back direction based on the last movement.
+        # If last_dx or last_dy is 0, set a default push direction (e.g., away from center or a fixed direction).
+        if self.last_dx == 0 and self.last_dy == 0:
+            # Default push if no recent movement (e.g., push left)
+            dx = -distance / steps
+            dy = 0
+        else:
+            # Reverse the last movement direction
+            norm = (self.last_dx**2 + self.last_dy**2)**0.5
+            if norm > 0:
+                dx = -self.last_dx * (distance / steps) / norm
+                dy = -self.last_dy * (distance / steps) / norm
+            else:
+                dx = 0
+                dy = 0
+
+
         def step(count=0):
             if count >= steps: return
             self.x += dx
