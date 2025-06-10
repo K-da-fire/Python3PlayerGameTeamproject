@@ -4,6 +4,7 @@
 HEART_SYMBOL = "♥"  # Unicode heart
 KEY_SYMBOL = "🔑"  # Unicode key
 GOAL_SYMBOL = "🏁"  # Unicode checkered flag for goal
+POTION_SYMBOL = "🧪"
 
 # icons.py
 def draw_icons(canvas, x, y, count=3, color="red", icon_type="heart"):

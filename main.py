@@ -8,7 +8,7 @@ from constants import *
 from player3 import Player3
 from obstacle import *
 from skillmanager import SkillManager
-from skills import BaseSkill, BlinkSkill
+from potion import Potion
 
 root = tk.Tk()
 
@@ -28,12 +28,19 @@ def main():
     p2 = Player(300, canvas_height - TILE_SIZE * 2, "blue", "arrow", canvas)
 
     p1_skills = SkillManager()
+    p1_skills.add_skill("물약", 1000, 999)  # 쿨타임 1초
+    p1_skills.add_skill("속도증가", 10000, 999)  # 쿨타임 10초
+    p1_skills.add_skill("무적", 30000, 999)  # 쿨타임 30초
+
     p2_skills = SkillManager()
+    p2_skills.add_skill("물약", 1000, 999)
+    p2_skills.add_skill("속도증가", 10000, 999)
+    p2_skills.add_skill("무적", 30000, 999)
+
     p3_skills = SkillManager()
 
-    for name, cooldown in [("총알", 1000), ("속도증가", 10000), ("무적", 30000)]:
-        p1_skills.add_skill(name, cooldown, 999)
-        p2_skills.add_skill(name, cooldown, 999)
+    p1.set_skill_manager(p1_skills)
+    p2.set_skill_manager(p2_skills)
 
     for name, cooldown, count in [("정사각형 벽", 3000, 999), ("가로벽", 3000, 999), ("세로벽", 3000, 999),
                                   ("슬로우장판", 5000, 5), ("튕겨내기", 5000, 5), ("반대움직임", 7000, 3), ("데미지", 10000, 2)]:
@@ -44,6 +51,26 @@ def main():
     goal_area = (canvas_width - TILE_SIZE * 2, UI_HEIGHT + TILE_SIZE, TILE_SIZE, TILE_SIZE)
     player_positions = [(p1.x, p1.y), (p2.x, p2.y)]
     all_positions_to_avoid = existing_key_positions + player_positions
+
+    potions_p1 = []
+    potions_p2 = []
+    existing_potion_positions = []
+    for _ in range(POTION_COUNT_PER_PLAYER):
+        x, y = generate_non_overlapping_key_position(existing_potion_positions,
+                                                     canvas_width,
+                                                     canvas_height,
+                                                     TILE_SIZE, UI_HEIGHT,
+                                                     goal_area)
+        existing_potion_positions.append((x, y))
+        potions_p1.append(Potion(x, y))
+    for _ in range(POTION_COUNT_PER_PLAYER):
+        x, y = generate_non_overlapping_key_position(existing_potion_positions,
+                                                     canvas_width,
+                                                     canvas_height,
+                                                     TILE_SIZE, UI_HEIGHT,
+                                                     goal_area)
+        existing_potion_positions.append((x, y))
+        potions_p2.append(Potion(x, y))
 
     all_obstacles = draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, all_positions_to_avoid, goal_area)
     p3 = Player3(canvas, p3_skills, all_obstacles)
@@ -58,16 +85,48 @@ def main():
         existing_key_positions.append((x, y))
         keys_p2.append(Key(x, y, "p2", canvas))
 
-    # 이벤트 핸들러
+    # === 이벤트 핸들러 ===
     def on_key_press(event):
-        key = event.keysym
-        key_l = key.lower()
-        p1.pressed.add(key)
-        p2.pressed.add(key)
-        p1.handle_skill_selection(key_l)
-        p2.handle_skill_selection(key_l)
-        if key_l in ["c", "v", "b"]: p1.use_selected_skill()
-        if key_l in ["comma", "period", "slash"]: p2.use_selected_skill()
+        if event.keysym in ["w", "a", "s", "d"]:
+            p1.pressed.add(event.keysym)
+        elif event.keysym in ["Up", "Down", "Left", "Right"]:
+            p2.pressed.add(event.keysym)
+        # P1 스킬 사용 키 바인딩
+        elif event.keysym == "c":
+            p1.selected_skill = 0
+            p1.use_selected_skill()
+        elif event.keysym == "v":
+            p1.selected_skill = 1
+            p1.use_selected_skill()
+        elif event.keysym == "b":
+            p1.selected_skill = 2
+            p1.use_selected_skill()
+        # P2 스킬 사용 키 바인딩
+        elif event.keysym == "comma":  # <
+            p2.selected_skill = 0
+            p2.use_selected_skill()
+        elif event.keysym == "period":  # >
+            p2.selected_skill = 1
+            p2.use_selected_skill()
+        elif event.keysym == "slash":  # ?
+            p2.selected_skill = 2
+            p2.use_selected_skill()
+
+        # P1 스킬 선택 키 바인딩
+        elif event.keysym == "C":  # C
+            print("c")
+            p1.handle_skill_selection("c")
+        elif event.keysym == "V":  # V
+            p1.handle_skill_selection("v")
+        elif event.keysym == "B":  # B
+            p1.handle_skill_selection("b")
+        # P2 스킬 선택 키 바인딩
+        elif event.keysym == "less":  # <
+            p2.handle_skill_selection("comma")
+        elif event.keysym == "greater":  # >
+            p2.handle_skill_selection("period")
+        elif event.keysym == "question":  # ?
+            p2.handle_skill_selection("slash")
 
     def on_key_release(event):
         key = event.keysym
@@ -87,6 +146,8 @@ def main():
     canvas.bind("<Button-1>", on_mouse_click)
 
     game_over = False
+    potion_message = ""
+    potion_message_timer = 0
     start_time = time.time()
 
     def show_winner(winner_text):
@@ -100,7 +161,7 @@ def main():
         retry_button.place(x=canvas_width // 2 - 60, y=canvas_height // 2 + 10)
 
     def game_loop():
-        nonlocal game_over
+        nonlocal game_over,potion_message, potion_message_timer
         if game_over:
             return
 
@@ -109,13 +170,21 @@ def main():
 
         canvas.delete("all")
 
+        if potion_message_timer > 0:
+            potion_message_timer -= 1
+            if potion_message_timer == 0:
+                potion_message = ""
+
         now = time.time()
         elapsed = now - start_time
         time_left = max(0, GAME_DURATION - elapsed)
 
         draw_map(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT)
-        draw_ui(canvas, canvas_width, UI_HEIGHT, p1.keys, p2.keys, p3.hp, p1.hp, p2.hp, time_left,
-                p1.selected_skill, p2.selected_skill, p3.selected_skill_index, p1_skills, p2_skills, p3_skills)
+        draw_ui(canvas, canvas_width, UI_HEIGHT, p1.keys, p2.keys,
+                p1.hp, p2.hp, p3.hp, time_left,
+                p1.selected_skill, p2.selected_skill, p3.selected_skill_index,
+                p1_skills, p2_skills, p3_skills, p1.potions, p2.potions,
+                potion_message)
 
         for k in keys_p1:
             k.draw()
@@ -123,6 +192,21 @@ def main():
         for k in keys_p2:
             k.draw()
             k.check(p2, "p2")
+
+        for potion in potions_p1:
+            potion.draw(canvas)
+            if not potion.collected and potion.check(p1):
+                potion_message = "포션을 획득했습니다!"
+                potion_message_timer = 30
+            if potion.collected:
+                potions_p1.remove(potion)
+        for potion in potions_p2:
+            potion.draw(canvas)
+            if not potion.collected and potion.check(p2):
+                potion_message = "포션을 획득했습니다!"
+                potion_message_timer = 30
+            if potion.collected:
+                potions_p2.remove(potion)
 
         p3.update_obstacles()
         all_obstacles[:] = [obs for obs in all_obstacles if not obs.is_expired()]
@@ -135,6 +219,11 @@ def main():
         p1_skills.update(GAME_TICK_MS)
         p2_skills.update(GAME_TICK_MS)
         p3_skills.update(GAME_TICK_MS)
+
+        if potion_message_timer > 0:
+            potion_message_timer -= 1
+            if potion_message_timer == 0:
+                potion_message = ""
 
         p1.move(canvas_width, canvas_height, UI_HEIGHT, all_obstacles)
         p2.move(canvas_width, canvas_height, UI_HEIGHT, all_obstacles)

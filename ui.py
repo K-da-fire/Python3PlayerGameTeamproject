@@ -7,7 +7,7 @@ def draw_ui(canvas, canvas_width, UI_HEIGHT,
             p1_hp, p2_hp, p3_hp,
             time_left,
             p1_selected, p2_selected, p3_selected,
-            p1_skills, p2_skills, p3_skills):
+            p1_skills, p2_skills, p3_skills, p1_potions, p2_potions, potion_message):
     
     # 전체 UI 영역 배경
     canvas.create_rectangle(0, 0, canvas_width, UI_HEIGHT, fill="lightgray", outline="")
@@ -21,7 +21,7 @@ def draw_ui(canvas, canvas_width, UI_HEIGHT,
 
     # P1 상태 및 스킬 그룹
     canvas.create_rectangle(p1_section_x, 5, p1_section_x + section_width, UI_HEIGHT - 5, fill="white", outline="gray")
-    canvas.create_text(p1_section_x + section_width / 2, 20, text=f"P1 ♥:{p1_hp} 🔑:{p1_keys}", font=("Arial", 12), anchor="center")
+    canvas.create_text(p1_section_x + section_width / 2, 20, text=f"P1 ♥:{p1_hp} 🔑:{p1_keys} 🧪:{p1_potions}", font=("Arial", 12), anchor="center", fill="black")
     # 스킬 바를 중앙에 오도록 x 좌표 조정
     skill_bar_start_x_p1 = p1_section_x + (section_width - (60 * len(p1_skills.skills) + 10 * (len(p1_skills.skills) -1))) / 2
     draw_skill_bar(canvas, skill_bar_start_x_p1, 40, p1_selected, p1_skills.skills)
@@ -30,7 +30,7 @@ def draw_ui(canvas, canvas_width, UI_HEIGHT,
 
     # P2 상태 및 스킬 그룹
     canvas.create_rectangle(p2_section_x, 5, p2_section_x + section_width, UI_HEIGHT - 5, fill="white", outline="gray")
-    canvas.create_text(p2_section_x + section_width / 2, 20, text=f"P2 ♥:{p2_hp} 🔑:{p2_keys}", font=("Arial", 12), anchor="center")
+    canvas.create_text(p2_section_x + section_width / 2, 20, text=f"P2 ♥:{p2_hp} 🔑:{p2_keys} 🧪:{p2_potions}", font=("Arial", 12), anchor="center", fill="black")
     # 스킬 바를 중앙에 오도록 x 좌표 조정
     skill_bar_start_x_p2 = p2_section_x + (section_width - (60 * len(p2_skills.skills) + 10 * (len(p2_skills.skills) -1))) / 2
     draw_skill_bar(canvas, skill_bar_start_x_p2, 40, p2_selected, p2_skills.skills)
@@ -39,7 +39,7 @@ def draw_ui(canvas, canvas_width, UI_HEIGHT,
 
     # P3 상태 및 스킬 그룹
     canvas.create_rectangle(p3_section_x, 5, p3_section_x + section_width, UI_HEIGHT - 5, fill="white", outline="gray")
-    canvas.create_text(p3_section_x + section_width / 2, 20, text=f"P3 ♥:{p3_hp}", font=("Arial", 12), anchor="center")
+    canvas.create_text(p3_section_x + section_width / 2, 20, text=f"P3 ♥:{p3_hp}", font=("Arial", 12), anchor="center", fill="black")
     # P3 스킬이 더 많으므로 너비 계산을 정확히 해야함
     # 가정: P3는 7개의 스킬을 가지고 있음.
     # 7 * 60 (바 너비) + 6 * 10 (스페이싱) = 420 + 60 = 480
@@ -61,8 +61,11 @@ def draw_ui(canvas, canvas_width, UI_HEIGHT,
 
 
     # 남은 시간 (가장 오른쪽)
-    canvas.create_text(canvas_width - 10, 20, text=f"⏱ {int(time_left)}초", font=("Arial", 14), anchor="ne")
+    canvas.create_text(canvas_width - 10, 20, text=f"⏱ {int(time_left)}초", font=("Arial", 14), anchor="ne", fill="black")
 
+    if potion_message:
+        canvas.create_text(canvas_width // 2, 30, text=potion_message,
+                           font=("Arial", 20, "bold"), fill="orange")
 
 def draw_skill_bar(canvas, x, y, selected_index, skills):
     bar_width = 60
