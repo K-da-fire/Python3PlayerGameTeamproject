@@ -28,6 +28,7 @@ class Player3:
 
         if self.can_place_obstacle():
             success = skill.use()
+
             if success:
                 if self.selected_skill_index == 0:
                     obstacle = WallObstacle(self.canvas, x, y, shape="square")
@@ -47,10 +48,16 @@ class Player3:
                 else:
                     return None
             self.obstacles.append(obstacle)
+            self.canvas.after(1000, lambda: self.activate_obstacle(obstacle))
+
             self.last_placed_time = int(time.time() * 1000)
             return obstacle
-
         return None
+
+    def activate_obstacle(self, obstacle):
+        obstacle.pending = False
+        obstacle.color = obstacle.original_color
+        self.canvas.itemconfig(obstacle.id, fill=obstacle.color)
 
     def update_obstacles(self):
         for obs in self.obstacles[:]:

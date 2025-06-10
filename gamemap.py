@@ -1,18 +1,40 @@
-# game_map.py
 from obstacle import WallObstacle
+from PIL import Image, ImageTk
 import random
 import math
-
+import os
 
 def draw_map(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT):
-    # 맵 전체 영역
-    canvas.create_rectangle(0, UI_HEIGHT, canvas_width, canvas_height, fill="white")
-    
-    # 골인지점 (오른쪽 상단에 위치)
+    # === 배경 이미지 불러오기 ===
+    asset_folder = os.path.join(os.path.dirname(__file__), "asset")
+    bg_path = os.path.join(asset_folder, "background.png")
+
+    try:
+        bg_image = Image.open(bg_path).resize((canvas_width, canvas_height - UI_HEIGHT))
+        tk_bg_image = ImageTk.PhotoImage(bg_image)
+
+        # 이미지 참조 유지 (GC 방지)
+        canvas.bg_refs = getattr(canvas, "bg_refs", [])
+        canvas.bg_refs.append(tk_bg_image)
+
+        canvas.create_image(
+            0, UI_HEIGHT,
+            image=tk_bg_image,
+            anchor="nw",
+            tags="background"
+        )
+        canvas.lower("background")  # 가장 뒤로 보냄
+
+    except Exception as e:
+        print(f"❌ 배경 이미지 로딩 실패: {e}")
+        # fallback: 흰 배경
+        canvas.create_rectangle(0, UI_HEIGHT, canvas_width, canvas_height, fill="white", tags="background")
+
+    # === 골인지점 (오른쪽 상단) ===
     canvas.create_rectangle(
         canvas_width - TILE_SIZE * 2, UI_HEIGHT + TILE_SIZE,
         canvas_width - TILE_SIZE, UI_HEIGHT + TILE_SIZE * 2,
-        fill="green"
+        fill="green", tags="map"
     )
 
 def draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, key_positions, goal_area):
@@ -32,7 +54,7 @@ def draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, key_posi
         existing_positions.append((x, y))
 
         shape = random.choice(shape_options)  # 무작위 모양 선택
-        obs = WallObstacle(canvas, x, y, shape=shape, duration=99999999)
+        obs = WallObstacle(canvas, x, y, shape=shape, color="gray", duration=99999999)
         obstacles.append(obs)
 
     return obstacles
