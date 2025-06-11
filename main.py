@@ -72,7 +72,13 @@ def main():
         existing_potion_positions.append((x, y))
         potions_p2.append(Potion(x, y, "p2"))
 
-    all_obstacles = draw_box(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT, all_positions_to_avoid, goal_area)
+    player_positions = [(p1.x, p1.y), (p2.x, p2.y)]
+    all_positions_to_avoid = existing_key_positions + player_positions
+
+    # draw_box 함수 호출 시 제외할 위치들 전달
+    all_obstacles = draw_box(canvas, canvas_width, canvas_height,
+                         TILE_SIZE, UI_HEIGHT, all_positions_to_avoid,
+                         goal_area)
     p3 = Player3(canvas, p3_skills, all_obstacles)
 
     for _ in range(3):

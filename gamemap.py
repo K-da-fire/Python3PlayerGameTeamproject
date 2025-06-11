@@ -37,25 +37,28 @@ def draw_map(canvas, canvas_width, canvas_height, TILE_SIZE, UI_HEIGHT):
         fill="green", tags="map"
     )
 
-def draw_box(canvas, canvas_width, canvas_height, tile_size, ui_height, key_positions, goal_area):
+def draw_box(canvas, canvas_width, canvas_height, tile_size, ui_height,
+             positions_to_avoid, goal_area, box_count=10, min_distance=60):
     obstacles = []
-    existing_positions = key_positions.copy()
-
     shape_options = ["square", "wide", "tall"]
 
-    for _ in range(10):  # 10개의 장애물 생성
+    for _ in range(box_count):
         x, y = generate_non_overlapping_obstacle_position(
-            existing_positions,
-            canvas_width, canvas_height,
-            tile_size, ui_height,
+            positions_to_avoid,
+            canvas_width,
+            canvas_height,
+            tile_size,
+            ui_height,
             goal_area,
-            min_distance=tile_size / 2
+            min_distance
         )
-        existing_positions.append((x, y))
-
         shape = random.choice(shape_options)  # 무작위 모양 선택
-        obs = WallObstacle(canvas, x, y, shape=shape, color="gray", duration=99999999)
+        obs = WallObstacle(canvas, x, y, shape=shape, color="gray",
+                           duration=99999999)
         obstacles.append(obs)
+
+        # 새로 생성한 장애물 위치도 제외 리스트에 추가
+        positions_to_avoid.append((x, y))
 
     return obstacles
 
